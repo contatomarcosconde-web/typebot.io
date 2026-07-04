@@ -69,18 +69,23 @@ export const handleDeleteTypebot = async ({
     throw new ORPCError("INTERNAL_SERVER_ERROR", {
       message: "Failed to archive results",
     });
-  await prisma.publicTypebot.deleteMany({
-    where: { typebotId },
-  });
-  await prisma.typebot.updateMany({
-    where: { id: typebotId },
-    data: { isArchived: true, publicId: null, customDomain: null },
-  });
-  if (env.S3_BUCKET)
-    await removeObjectsFromTypebot({
-      workspaceId: existingTypebot.workspace.id,
-      typebotId,
-    });
+  await prisma.$transaction([
+    prisma.publicTypebot.deleteMany({ where: { typebotId } }),
+    prisma.typebot.updateMany({
+      where: { id: typebotId },
+      data: { isArchived: true, publicId: null, customDomain: null },
+    }),
+  ]);
+  if (env.S3_BUCKET) {
+    try {
+      await removeObjectsFromTypebot({
+        workspaceId: existingTypebot.workspace.id,
+        typebotId,
+      });
+    } catch (err) {
+      console.error("Failed to remove S3 objects:", err);
+    }
+  }
   return {
     message: "success" as const,
   };

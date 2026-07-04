@@ -1,64 +1,61 @@
-x-typebot-common: &typebot-common
-  restart: always
-  depends_on:
-    typebot-redis:
-      condition: service_healthy
-    typebot-db:
-      condition: service_healthy
-  networks:
-    - typebot-network
-  env_file: .env
-  environment:
-    REDIS_URL: redis://typebot-redis:6379
-
+version: '3.8'
 services:
   typebot-db:
-    image: postgres:16
+    image: 'postgres:16'
     restart: always
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - 'typebot-db-data:/var/lib/postgresql/data'
     environment:
-      - POSTGRES_DB=typebot
-      - POSTGRES_PASSWORD=typebot
+      - POSTGRES_DB=typebot_db_prod
+      - POSTGRES_PASSWORD=30041986@Max@
+      - POSTGRES_USER=postgres
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test:
+        - CMD-SHELL
+        - 'pg_isready -U postgres'
       interval: 5s
       timeout: 5s
       retries: 5
-    networks:
-      - typebot-network
-
-  typebot-redis:
-    image: redis:alpine
-    restart: always
-    command: --save 60 1 --loglevel warning
-    healthcheck:
-      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
-      start_period: 20s
-      interval: 30s
-      retries: 5
-      timeout: 3s
-    volumes:
-      - redis-data:/data
-    networks:
-      - typebot-network
-
   typebot-builder:
-    <<: *typebot-common
-    image: baptistearno/typebot-builder:latest
-    ports:
-      - "8080:3000"
-
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SCOPE: builder
+    depends_on:
+      typebot-db:
+        condition: service_healthy
+    restart: always
+    environment:
+      - 'DATABASE_URL=postgresql://postgres:30041986@Max@@typebot-db:5432/typebot_db_prod'
+      - ENCRYPTION_SECRET=p9X2mR7vK4wQ9zB2nH5tJ8xL1cC4vB3n
+      - 'NEXTAUTH_URL=https://typebot.smarttbizz.com'
+      - 'NEXT_PUBLIC_VIEWER_URL=https://typebot-v.smarttbizz.com'
+      - ADMIN_EMAIL=contatomarcosconde@gmail.com
+      - DISABLE_SIGNUP=false
+      - SMTP_HOST=smtp.hostinger.com
+      - SMTP_PORT=465
+      - SMTP_SECURE=true
+      - SMTP_USERNAME=contato@agcmc.com.br
+      - SMTP_PASSWORD=30041986Max@
+      - NEXT_PUBLIC_SMTP_FROM=contato@agcmc.com.br
+      - STRIPE_SECRET_KEY=insira_aqui_sua_sk_live_do_stripe
+      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=insira_aqui_sua_pk_live_do_stripe
+      - STRIPE_WEBHOOK_SECRET=insira_aqui_o_secret_do_webhook_do_stripe
+      - STRIPE_STARTER_PRICE_ID=prod_xxxx_ou_price_xxxx
+      - STRIPE_PRO_PRICE_ID=prod_xxxx_ou_price_xxxx
   typebot-viewer:
-    <<: *typebot-common
-    image: baptistearno/typebot-viewer:latest
-    ports:
-      - "8081:3000"
-
-networks:
-  typebot-network:
-    driver: bridge
-
-volumes:
-  db-data:
-  redis-data:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SCOPE: viewer
+    depends_on:
+      typebot-db:
+        condition: service_healthy
+    restart: always
+    environment:
+      - 'DATABASE_URL=postgresql://postgres:30041986@Max@@typebot-db:5432/typebot_db_prod'
+      - ENCRYPTION_SECRET=p9X2mR7vK4wQ9zB2nH5tJ8xL1cC4vB3n
+      - 'NEXTAUTH_URL=https://typebot.smarttbizz.com'
+      - 'NEXT_PUBLIC_VIEWER_URL=https://typebot-v.smarttbizz.com'
